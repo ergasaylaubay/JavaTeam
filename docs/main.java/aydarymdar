@@ -1,0 +1,197 @@
+import java.util.ArrayList;
+import java.util.Scanner;
+
+public class Main {
+    static Scanner scanner = new Scanner(System.in);
+    static ArrayList<Account> accounts = new ArrayList<>();
+    static ArrayList<Operation> operations = new ArrayList<>();
+
+    public static void main(String[] args) {
+        accounts.add(new Account(1, "Ерасыл", 50000));
+        accounts.add(new Account(2, "Нұрғали", 20000));
+
+        while (true) {
+            System.out.println();
+            System.out.println("1. Шоттарды көрсету");
+            System.out.println("2. Ақша аудару");
+            System.out.println("3. Операциялар журналы");
+            System.out.println("0. Шығу");
+
+            int choice = readInt("Таңдау: ");
+
+            if (choice == 1) {
+                showAccounts();
+            } else if (choice == 2) {
+                makeTransfer();
+            } else if (choice == 3) {
+                showOperations();
+            } else if (choice == 0) {
+                System.out.println("Бағдарлама аяқталды");
+                break;
+            } else {
+                System.out.println("Қате таңдау");
+            }
+        }
+    }
+
+    static void makeTransfer() {
+        showAccounts();
+
+        int sourceId = readInt("Қай шоттан: ");
+        int targetId = readInt("Қай шотқа: ");
+        double amount = readDouble("Сома: ");
+
+        Account source = findAccount(sourceId);
+        Account target = findAccount(targetId);
+
+        if (source == null || target == null) {
+            System.out.println("Шот табылмады");
+            return;
+        }
+
+        if (sourceId == targetId) {
+            System.out.println(
+                    "Бір шоттың өзіне аударуға болмайды"
+            );
+            return;
+        }
+
+        if (amount <= 0) {
+            System.out.println("Сома дұрыс емес");
+            return;
+        }
+
+        if (source.balance < amount) {
+            operations.add(
+                    new Operation(
+                            sourceId,
+                            targetId,
+                            amount,
+                            "FAILED"
+                    )
+            );
+
+            System.out.println("Қаражат жеткіліксіз");
+            return;
+        }
+
+        source.balance -= amount;
+        target.balance += amount;
+
+        operations.add(
+                new Operation(
+                        sourceId,
+                        targetId,
+                        amount,
+                        "SUCCESS"
+                )
+        );
+
+        System.out.println("Аударым сәтті орындалды");
+    }
+
+    static Account findAccount(int id) {
+        for (Account account : accounts) {
+            if (account.id == id) {
+                return account;
+            }
+        }
+
+        return null;
+    }
+
+    static void showAccounts() {
+        System.out.println();
+        System.out.println("Шоттар:");
+
+        for (Account account : accounts) {
+            System.out.printf(
+                    "№%d | %s | %.2f KZT%n",
+                    account.id,
+                    account.owner,
+                    account.balance
+            );
+        }
+    }
+
+    static void showOperations() {
+        System.out.println();
+        System.out.println("Операциялар журналы:");
+
+        if (operations.isEmpty()) {
+            System.out.println("Операциялар жоқ");
+            return;
+        }
+
+        for (int i = 0; i < operations.size(); i++) {
+            Operation operation = operations.get(i);
+
+            System.out.printf(
+                    "%d. %d -> %d | %.2f KZT | %s%n",
+                    i + 1,
+                    operation.sourceId,
+                    operation.targetId,
+                    operation.amount,
+                    operation.status
+            );
+        }
+    }
+
+    static String readText(String message) {
+        System.out.print(message);
+        return scanner.nextLine().trim();
+    }
+
+    static int readInt(String message) {
+        while (true) {
+            try {
+                return Integer.parseInt(readText(message));
+            } catch (NumberFormatException error) {
+                System.out.println("Бүтін сан енгізіңіз");
+            }
+        }
+    }
+
+    static double readDouble(String message) {
+        while (true) {
+            try {
+                String value = readText(message);
+                value = value.replace(',', '.');
+                return Double.parseDouble(value);
+            } catch (NumberFormatException error) {
+                System.out.println("Сан енгізіңіз");
+            }
+        }
+    }
+
+    static class Account {
+        int id;
+        String owner;
+        double balance;
+
+        Account(int id, String owner, double balance) {
+            this.id = id;
+            this.owner = owner;
+            this.balance = balance;
+        }
+    }
+
+    static class Operation {
+        int sourceId;
+        int targetId;
+        double amount;
+        String status;
+
+        Operation(
+                int sourceId,
+                int targetId,
+                double amount,
+                String status
+        ) {
+            this.sourceId = sourceId;
+            this.targetId = targetId;
+            this.amount = amount;
+            this.status = status;
+        }
+    }
+}
