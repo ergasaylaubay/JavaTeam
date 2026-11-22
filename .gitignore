@@ -1,0 +1,16 @@
+target/
+.idea/
+*.iml
+data/
+exports/
+*.db
+*.db-shm
+*.db-wal
+
+dist/
+*.zip
+*.jar
+*.class
+.env
+.env.*
+!.env.example
