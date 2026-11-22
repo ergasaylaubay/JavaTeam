@@ -1,0 +1,214 @@
+import java.util.ArrayList;
+import java.util.Scanner;
+
+public class Main {
+    static Scanner scanner = new Scanner(System.in);
+    static ArrayList<Client> clients = new ArrayList<>();
+    static ArrayList<Account> accounts = new ArrayList<>();
+
+    static int nextClientId = 1;
+    static int nextAccountId = 1;
+
+    public static void main(String[] args) {
+        while (true) {
+            System.out.println();
+            System.out.println("1. Клиент қосу");
+            System.out.println("2. Шот ашу");
+            System.out.println("3. Клиенттер мен шоттарды көрсету");
+            System.out.println("0. Шығу");
+
+            int choice = readInt("Таңдау: ");
+
+            if (choice == 1) {
+                addClient();
+            } else if (choice == 2) {
+                openAccount();
+            } else if (choice == 3) {
+                showAccounts();
+            } else if (choice == 0) {
+                System.out.println("Бағдарлама аяқталды");
+                break;
+            } else {
+                System.out.println("Қате таңдау");
+            }
+        }
+    }
+
+    static void addClient() {
+        String name = readText("Клиенттің аты-жөні: ");
+
+        if (name.isEmpty()) {
+            System.out.println("Аты-жөні бос болмауы керек");
+            return;
+        }
+
+        Client client = new Client(nextClientId, name);
+        clients.add(client);
+        nextClientId++;
+
+        System.out.println("Клиент қосылды");
+        System.out.println("Клиент ID: " + client.id);
+    }
+
+    static void openAccount() {
+        if (clients.isEmpty()) {
+            System.out.println("Алдымен клиент қосыңыз");
+            return;
+        }
+
+        showClients();
+
+        int clientId = readInt("Клиент ID: ");
+        Client client = findClient(clientId);
+
+        if (client == null) {
+            System.out.println("Клиент табылмады");
+            return;
+        }
+
+        String type = readText("Шот түрі: ");
+        String currency = readText("Валюта: ");
+        double balance = readDouble("Бастапқы баланс: ");
+
+        if (type.isEmpty()) {
+            type = "Қарапайым";
+        }
+
+        if (currency.isEmpty()) {
+            currency = "KZT";
+        }
+
+        if (balance < 0) {
+            System.out.println("Баланс теріс болмауы керек");
+            return;
+        }
+
+        Account account = new Account(
+                nextAccountId,
+                clientId,
+                type,
+                currency.toUpperCase(),
+                balance
+        );
+
+        accounts.add(account);
+        nextAccountId++;
+
+        System.out.println("Шот ашылды");
+        System.out.println("Шот ID: " + account.id);
+    }
+
+    static Client findClient(int id) {
+        for (Client client : clients) {
+            if (client.id == id) {
+                return client;
+            }
+        }
+
+        return null;
+    }
+
+    static void showClients() {
+        System.out.println();
+        System.out.println("Клиенттер:");
+
+        for (Client client : clients) {
+            System.out.println(
+                    client.id + ". " + client.name
+            );
+        }
+    }
+
+    static void showAccounts() {
+        if (clients.isEmpty()) {
+            System.out.println("Клиенттер жоқ");
+            return;
+        }
+
+        for (Client client : clients) {
+            System.out.println();
+            System.out.println(
+                    client.id + ". " + client.name
+            );
+
+            boolean found = false;
+
+            for (Account account : accounts) {
+                if (account.clientId == client.id) {
+                    found = true;
+
+                    System.out.printf(
+                            "Шот №%d | %s | %.2f %s%n",
+                            account.id,
+                            account.type,
+                            account.balance,
+                            account.currency
+                    );
+                }
+            }
+
+            if (!found) {
+                System.out.println("Шот жоқ");
+            }
+        }
+    }
+
+    static String readText(String message) {
+        System.out.print(message);
+        return scanner.nextLine().trim();
+    }
+
+    static int readInt(String message) {
+        while (true) {
+            try {
+                return Integer.parseInt(readText(message));
+            } catch (NumberFormatException error) {
+                System.out.println("Бүтін сан енгізіңіз");
+            }
+        }
+    }
+
+    static double readDouble(String message) {
+        while (true) {
+            try {
+                String value = readText(message);
+                value = value.replace(',', '.');
+                return Double.parseDouble(value);
+            } catch (NumberFormatException error) {
+                System.out.println("Сан енгізіңіз");
+            }
+        }
+    }
+
+    static class Client {
+        int id;
+        String name;
+
+        Client(int id, String name) {
+            this.id = id;
+            this.name = name;
+        }
+    }
+
+    static class Account {
+        int id;
+        int clientId;
+        String type;
+        String currency;
+        double balance;
+
+        Account(
+                int id,
+                int clientId,
+                String type,
+                String currency,
+                double balance
+        ) {
+            this.id = id;
+            this.clientId = clientId;
+            this.type = type;
+            this.currency = currency;
+            this.balance = balance;
+        }
+    }
+}
