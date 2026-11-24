@@ -1,64 +1,60 @@
-package kz.halyk.member3;
+package kz.halyk;
 
-import java.math.*;
-import java.util.*;
-import kz.halyk.common.Money;
+import static org.junit.jupiter.api.Assertions.*;
 
-public final class LoanCalculator {
-  private static final MathContext MC = MathContext.DECIMAL128;
+import java.math.BigDecimal;
+import kz.halyk.member3.LoanCalculator;
+import org.junit.jupiter.api.Test;
 
-  public record Payment(
-      int month,
-      BigDecimal payment,
-      BigDecimal interest,
-      BigDecimal principal,
-      BigDecimal remainingDebt) {}
+class Member3Test {
+  final LoanCalculator calculator = new LoanCalculator();
 
-  public record Schedule(
-      BigDecimal monthlyPayment,
-      List<Payment> rows,
-      BigDecimal totalPayment,
-      BigDecimal totalInterest) {}
-
-  public Schedule calculate(BigDecimal principal, BigDecimal annualRate, int months) {
-    Money.minor(principal);
-    if (annualRate == null
-        || annualRate.signum() < 0
-        || annualRate.compareTo(new BigDecimal("1000")) > 0)
-      throw new IllegalArgumentException("Жылдық пайыз: 0–1000 аралығы");
-    if (months < 1 || months > 1200) throw new IllegalArgumentException("Ай саны: 1–1200 аралығы");
-    BigDecimal rate = annualRate.divide(new BigDecimal("1200"), MC);
-    BigDecimal payment;
-    if (rate.signum() == 0) payment = principal.divide(BigDecimal.valueOf(months), MC);
-    else {
-      BigDecimal power = BigDecimal.ONE.add(rate).pow(months, MC);
-      payment =
-          principal
-              .multiply(rate, MC)
-              .multiply(power, MC)
-              .divide(power.subtract(BigDecimal.ONE), MC);
-    }
-    payment = round(payment);
-    BigDecimal remaining = round(principal), total = round(BigDecimal.ZERO), interestTotal = total;
-    List<Payment> rows = new ArrayList<>();
-    for (int month = 1; month <= months; month++) {
-      BigDecimal interest = round(remaining.multiply(rate, MC));
-      BigDecimal paidPrincipal =
-          month == months ? remaining : payment.subtract(interest).min(remaining);
-      if (paidPrincipal.signum() < 0)
-        throw new IllegalArgumentException(
-            "Дөңгелектеуден теріс төлем шықты: параметрлерді өзгертіңіз");
-      BigDecimal actualPayment = paidPrincipal.add(interest);
-      remaining = remaining.subtract(paidPrincipal);
-      rows.add(new Payment(month, actualPayment, interest, paidPrincipal, remaining));
-      total = total.add(actualPayment);
-      interestTotal = interestTotal.add(interest);
-    }
-    return new Schedule(payment, List.copyOf(rows), total, interestTotal);
+  @Test
+  void annuityReference() {
+    var s = calculator.calculate(new BigDecimal("100000"), new BigDecimal("12"), 12);
+    assertEquals(new BigDecimal("8884.88"), s.monthlyPayment());
+    assertEquals(12, s.rows().size());
   }
 
-  private BigDecimal round(BigDecimal value) {
-    return value.setScale(2, RoundingMode.HALF_UP);
+  @Test
+  void zeroInterest() {
+    var s = calculator.calculate(new BigDecimal("120000"), BigDecimal.ZERO, 12);
+    assertEquals(new BigDecimal("10000.00"), s.monthlyPayment());
+    assertEquals(new BigDecimal("0.00"), s.totalInterest());
+  }
+
+  @Test
+  void finalRoundingAndTotals() {
+    var s = calculator.calculate(new BigDecimal("100000"), new BigDecimal("12"), 12);
+    assertEquals(new BigDecimal("0.00"), s.rows().get(11).remainingDebt());
+    assertEquals(
+        new BigDecimal("100000.00"),
+        s.rows().stream()
+            .map(LoanCalculator.Payment::principal)
+            .reduce(BigDecimal.ZERO, BigDecimal::add));
+    assertEquals(s.totalPayment(), new BigDecimal("100000").add(s.totalInterest()));
+    s.rows().forEach(r -> assertEquals(r.payment(), r.interest().add(r.principal())));
+  }
+
+  @Test
+  void invalidParametersRejected() {
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> calculator.calculate(BigDecimal.ZERO, BigDecimal.TEN, 12));
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> calculator.calculate(BigDecimal.TEN, new BigDecimal("-1"), 12));
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> calculator.calculate(BigDecimal.TEN, BigDecimal.ZERO, 0));
+  }
+
+  @Test
+  void tinyLoanAndOneMonthStillClose() {
+    var tiny = calculator.calculate(new BigDecimal("0.01"), BigDecimal.ZERO, 12);
+    assertEquals(new BigDecimal("0.01"), tiny.totalPayment());
+    assertEquals(new BigDecimal("0.00"), tiny.rows().get(11).remainingDebt());
+    var one = calculator.calculate(new BigDecimal("100"), new BigDecimal("12"), 1);
+    assertEquals(new BigDecimal("101.00"), one.totalPayment());
   }
 }
-
